@@ -1,0 +1,4 @@
+tasks:
+  - id: 1
+    description: test
+    cron: 0 0 1/0 * * ?
