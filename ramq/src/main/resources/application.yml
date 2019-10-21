@@ -1,0 +1,27 @@
+
+server:
+  port: 8083
+
+spring:
+  rabbitmq:
+    addresses: 127.0.0.1
+    port: 5672
+    username: root
+    password: root
+    virtual-host: /
+    listener:
+      simple:
+        acknowledge-mode: auto
+        retry:
+          enabled: false
+          max-attempts: 3
+
+listeners:
+  demo:
+    queue: demo
+    exchange: demo
+    route: demo
+
+
+
+
