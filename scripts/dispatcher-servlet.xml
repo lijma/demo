@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:mvc="http://www.springframework.org/schema/mvc"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:jee="http://www.springframework.org/schema/jee"
+       xmlns:security="http://www.springframework.org/schema/security"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context.xsd
+        http://www.springframework.org/schema/mvc
+        http://www.springframework.org/schema/mvc/spring-mvc-4.0.xsd
+        http://www.springframework.org/schema/jee
+        http://www.springframework.org/schema/jee/spring-jee-4.0.xsd
+        http://www.springframework.org/schema/tx
+        http://www.springframework.org/schema/tx/spring-tx-4.0.xsd
+        http://www.springframework.org/schema/security
+		http://www.springframework.org/schema/security/spring-security.xsd">
+
+    <context:component-scan base-package="com.nokia.oss.smu.web.controller"/>
+    <context:component-scan base-package="com.nokia.oss.smu.web.session"/>
+
+    <bean id="pemAuthorizationQuery" class="com.nokia.oss.smu.core.spring.WeakStatelessEJB2FactoryBean">
+    	<property name="homeType" value="com.nokia.oss.interfaces.pem.PEMAuthorizationQueryHome"/>
+    	<property name="jndiName" value="cell/persistent/SM.PEMAuthorizationQuery"/>
+    	<property name="fakeHandlerForDisabled">
+    		<bean class="com.nokia.oss.smu.web.session.FakePEMAuthorizationQueryHandler"/>
+    	</property>
+    </bean>
+
+    <bean class="org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter">
+        <property name="messageConverters">
+            <list>
+                <bean class="org.springframework.http.converter.json.MappingJackson2HttpMessageConverter">
+                   <property name="objectMapper">
+            		 <bean class="com.nokia.oss.smu.web.json.HibernateAwareObjectMapper" />
+                   </property>
+                </bean>
+            </list>
+        </property>
+        <property name="cacheSeconds" value="0" />
+    </bean>
+
+    <mvc:annotation-driven />
+
+    <bean id="preAuthenticatedUserDetailsService"
+      class="org.springframework.security.web.authentication.preauth.PreAuthenticatedGrantedAuthoritiesUserDetailsService"/>
+	<bean id="preAuthenticatedAuthenticationProvider"
+	      class="org.springframework.security.web.authentication.preauth.PreAuthenticatedAuthenticationProvider">
+	    <property name="preAuthenticatedUserDetailsService" ref="preAuthenticatedUserDetailsService"/>
+	</bean>
+	<bean id="sif" class="org.springframework.security.web.context.SecurityContextPersistenceFilter"/>
+	<bean id="j2eePreAuthFilter"
+	      class="org.springframework.security.web.authentication.preauth.j2ee.J2eePreAuthenticatedProcessingFilter">
+	    <property name="authenticationManager" ref="authenticationManager"/>
+	    <property name="authenticationDetailsSource">
+	        <bean class="org.springframework.security.web.authentication.preauth.j2ee.J2eeBasedPreAuthenticatedWebAuthenticationDetailsSource">
+	            <property name="mappableRolesRetriever">
+	                <bean class="org.springframework.security.web.authentication.preauth.j2ee.WebXmlMappableAttributesRetriever"/>
+	            </property>
+	            <property name="userRoles2GrantedAuthoritiesMapper">
+	                <bean class="org.springframework.security.core.authority.mapping.SimpleAttributes2GrantedAuthoritiesMapper">
+	                    <property name="convertAttributeToUpperCase" value="true"/>
+	                </bean>
+	            </property>
+	        </bean>
+	    </property>
+	</bean>
+  	
+    <bean id="tokenRepository" class="org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository" />
+    
+    <security:authentication-manager alias="authenticationManager">
+        <security:authentication-provider ref="preAuthenticatedAuthenticationProvider"/>
+    </security:authentication-manager>
+
+	<bean id="http403EntryPoint" class="org.springframework.security.web.authentication.Http403ForbiddenEntryPoint"></bean>
+    <security:http entry-point-ref="http403EntryPoint">
+        <security:intercept-url pattern="/*"/>
+        <security:csrf token-repository-ref="tokenRepository"/>
+        <security:custom-filter ref="j2eePreAuthFilter" position="PRE_AUTH_FILTER"/>
+    </security:http>
+
+</beans>
